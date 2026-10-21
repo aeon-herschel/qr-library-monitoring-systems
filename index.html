@@ -1,0 +1,165 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>QR Library Monitoring System</title>
+  <link rel="stylesheet" href="style.css">
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+  <script src="https://unpkg.com/html5-qrcode"></script>
+</head>
+<body>
+  <section id="loginPage" class="login-page">
+    <form id="loginForm" class="login-card">
+      <div class="logo">▤</div>
+      <h1>Library Portal</h1>
+      <p>Senior High School Library</p>
+      <label>Email</label>
+      <input id="username" type="email" required autocomplete="username" placeholder="Enter email">
+      <label>Password</label>
+      <input id="password" type="password" required autocomplete="current-password" placeholder="Enter password">
+      <button class="primary full">Sign In</button>
+      <p class="hint">Sign in using your Firebase account.</p>
+      <p id="loginError" class="error"></p>
+    </form>
+  </section>
+
+  <div id="app" class="app hidden">
+    <aside class="sidebar">
+      <div class="brand"><span>▤</span> Prototype</div>
+      <p class="side-label">MAIN MENU</p>
+      <button class="nav active" data-page="dashboard">▦ Dashboard</button>
+      <button class="nav" data-page="books">▤ Books</button>
+      <button class="nav" data-page="borrow">＋ Borrow Item</button>
+      <button class="nav" data-page="active">◷ Active Borrowings</button>
+      <button class="nav" data-page="returns">↩ Return Book</button>
+      <button class="nav" data-page="history">▧ Borrowing History</button>
+      <div class="side-bottom">
+        <div>Logged in as <strong>Librarian</strong></div>
+        <button id="logoutBtn" class="nav">⇥ Logout</button>
+      </div>
+    </aside>
+
+    <main class="main">
+      <header class="topbar">
+        <div>
+          <h2 id="pageTitle">Dashboard</h2>
+          <p>QR-Based Book Borrowing and Return Monitoring</p>
+        </div>
+        <span class="user-badge">● Authorized
+        </span>
+      </header>
+
+      <section id="dashboard" class="page">
+        <div class="welcome">
+          <div>
+            <span class="eyebrow">LIBRARY MANAGEMENT SYSTEM</span>
+            <h1>Welcome, Librarian!</h1>
+          </div>
+          <div class="welcome-icon">▤</div>
+        </div>
+        <div class="stats">
+          <article class="stat"><span>Total Titles</span><strong id="totalBooks">0</strong><small>Book records</small></article>
+          <article class="stat"><span>Active Borrowings</span><strong id="activeCount">0</strong><small>Not yet returned</small></article>
+          <article class="stat"><span>Books Returned</span><strong id="returnedCount">0</strong><small>Completed returns</small></article>
+        </div>
+        <div class="panel">
+          <div class="panel-head"><div><h3>Recent Transactions</h3><p>Latest borrowing and return activity</p></div></div>
+          <div id="recentTransactions"></div>
+        </div>
+        <div class="quick-actions">
+          <button class="primary" data-go="borrow">＋ Borrow a Book</button>
+          <button class="secondary" data-go="books">▤ Manage Books</button>
+          <button class="secondary" data-go="returns">↩ Process Return</button>
+        </div>
+      </section>
+
+      <section id="books" class="page hidden">
+        <div class="panel">
+          <div class="panel-head">
+            <div><h3>Book Inventory</h3><p>Manage your library collection</p></div>
+            <button id="addBookBtn" class="primary">＋ Add Book</button>
+          </div>
+          <input id="bookSearch" class="search" placeholder="Search by title or QR ID...">
+          <div id="booksTable"></div>
+        </div>
+        <div id="bookFormPanel" class="panel hidden">
+          <h3 id="bookFormTitle">Add New Book</h3>
+          <form id="bookForm" class="form-grid">
+            <input type="hidden" id="editBookId">
+            <label>Book Title<input id="bookTitle" required></label>
+            <label>Category<input id="bookCategory" required placeholder="e.g. Fiction"></label>
+            <div class="form-actions">
+              <button class="primary">Save Book</button>
+              <button type="button" id="cancelBook" class="secondary">Cancel</button>
+            </div>
+          </form>
+        </div>
+        <div id="qrPanel" class="panel hidden">
+          <h3>Book QR Code</h3>
+          <p id="qrBookName"></p>
+          <div id="qrCode"></div>
+          <p class="hint">Print this code and attach it to the corresponding book.</p>
+          <button id="printQR" class="primary">Print QR Code</button>
+        </div>
+      </section>
+
+      <section id="borrow" class="page hidden">
+        <div class="panel form-panel">
+          <h3>Borrow a Book</h3>
+          <p>Enter the book and student information to record a borrowing transaction.</p>
+          <form id="borrowForm" class="form-grid">
+            <label>Book<select id="borrowBook" required></select></label>
+            <label>Grade Level<select id="grade" required><option value="">Select grade</option><option>Grade 11</option><option>Grade 12</option></select></label>
+            <label>Section<input id="section" required placeholder="e.g. STEM A"></label>
+            <label>Student Name<input id="student" required placeholder="Full name"></label>
+            <label>Student ID<input id="studentId" required placeholder="School ID number"></label>
+            <label>Due Date<input id="dueDate" type="date" required></label>
+            <label class="full-width">QR Code / Book ID
+              <div class="inline-input"><input id="borrowQr" placeholder="Enter or scan a book QR ID"><button type="button" id="scanBorrow" class="secondary">Scan QR</button></div>
+            </label>
+            <div id="scanner" class="full-width hidden"></div>
+            <div class="form-actions full-width">
+              <button class="primary">Confirm Borrowing</button>
+              <button type="reset" class="secondary">Clear Form</button>
+            </div>
+          </form>
+          <p class="hint">A borrowing record is created after you confirm the details.</p>
+        </div>
+      </section>
+
+      <section id="active" class="page hidden">
+        <div class="panel">
+          <div class="panel-head"><div><h3>Active Borrowings</h3><p>Books that have not yet been returned</p></div></div>
+          <input id="activeSearch" class="search" placeholder="Search student, book, or ID...">
+          <div id="activeTable"></div>
+        </div>
+      </section>
+
+      <section id="returns" class="page hidden">
+        <div class="panel">
+          <h3>Return a Book</h3>
+          <p>Find the active borrowing record and confirm the return.</p>
+          <input id="returnSearch" class="search" placeholder="Search by student, book, or borrowing ID...">
+          <div id="returnTable"></div>
+        </div>
+      </section>
+
+      <section id="history" class="page hidden">
+        <div class="panel">
+          <h3>Borrowing History</h3>
+          <p>Records of all borrowing and return transactions</p>
+          <input id="historySearch" class="search" placeholder="Search transaction history...">
+          <button type="button" id="clearHistoryBtn" class="action">
+           Clear History
+       </button>
+
+          <div id="historyTable"></div>
+        </div>
+      </section>
+    </main>
+  </div>
+  <div id="toast" class="toast"></div>
+  <script type="module" src="script.js"></script>
+</body>
+</html>
