@@ -31,6 +31,7 @@
       <button class="nav active" data-page="dashboard">▦ Dashboard</button>
       <button class="nav" data-page="books">▤ Books</button>
       <button class="nav" data-page="borrow">＋ Borrow Item</button>
+      <button class="nav" data-page="scanTransaction">▣ Scan QR</button>
       <button class="nav" data-page="active">◷ Active Borrowings</button>
       <button class="nav" data-page="returns">↩ Return Book</button>
       <button class="nav" data-page="history">▧ Borrowing History</button>
@@ -113,7 +114,6 @@
             <label>Grade Level<select id="grade" required><option value="">Select grade</option><option>Grade 11</option><option>Grade 12</option></select></label>
             <label>Section<input id="section" required placeholder="e.g. STEM A"></label>
             <label>Student Name<input id="student" required placeholder="Full name"></label>
-            <label>Student ID<input id="studentId" required placeholder="School ID number"></label>
             <label>Due Date<input id="dueDate" type="date" required></label>
             <label class="full-width">QR Code / Book ID
               <div class="inline-input"><input id="borrowQr" placeholder="Enter or scan a book QR ID"><button type="button" id="scanBorrow" class="secondary">Scan QR</button></div>
@@ -127,6 +127,68 @@
           <p class="hint">A borrowing record is created after you confirm the details.</p>
         </div>
       </section>
+
+      <section id="scanTransaction" class="page hidden">
+  <div class="panel form-panel">
+    <h3>QR Book Transaction</h3>
+    <p>Scan a book QR code to borrow or return a book.</p>
+
+    <div class="inline-input">
+      <input id="transactionQr" placeholder="Enter Book ID">
+      <button type="button" id="scanTransactionBtn" class="primary">
+        Scan QR
+      </button>
+    </div>
+
+    <div id="transactionScanner" class="hidden"></div>
+
+    <div id="transactionResult" class="hidden">
+      <h3 id="transactionBookTitle"></h3>
+      <p id="transactionBookStatus"></p>
+
+      <div id="transactionOptions" class="form-actions">
+        <button type="button" id="chooseBorrow" class="primary">
+          Borrow Book
+        </button>
+
+        <button type="button" id="chooseReturn" class="secondary">
+          Return Book
+        </button>
+      </div>
+
+<form id="transactionBorrowForm" class="form-grid hidden">
+
+  <label>Student Name
+    <input id="transactionStudent" required placeholder="Full name">
+  </label>
+
+  <label>Grade & Section
+    <input id="transactionGradeSection" required placeholder="e.g. Grade 12 - STEM A">
+  </label>
+
+  <div class="form-actions full-width">
+    <button type="submit" class="primary">Confirm Borrowing</button>
+    <button type="button" id="cancelTransaction" class="secondary">
+      Cancel
+    </button>
+  </div>
+
+</form>
+
+<div id="transactionReturnDetails" class="hidden">
+  <p id="transactionBorrower"></p>
+
+  <div class="form-actions">
+    <button type="button" id="confirmTransactionReturn" class="primary">
+      Confirm Return
+    </button>
+
+    <button type="button" id="cancelTransactionReturn" class="secondary">
+      Cancel
+    </button>
+  </div>
+</div>
+</section>
 
       <section id="active" class="page hidden">
         <div class="panel">
