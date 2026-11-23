@@ -475,25 +475,15 @@ $("borrowForm").addEventListener("submit", event => {
     return;
   }
 
-  const studentId = $("studentId").value.trim();
 
-  if (data.loans.some(l =>
-    l.studentId.toLowerCase() === studentId.toLowerCase() &&
-    l.bookId === book.id && !l.returnedAt
-  )) {
-    notify("This student already borrowed this book.");
-    return;
-  }
-
-  if (!confirm(
-    `Confirm borrowing?\nBook: ${book.title}\nStudent: ${$("student").value}\nStudent ID: ${studentId}`
-  )) return;
+if (!confirm(
+  `Confirm borrowing?\nBook: ${book.title}\nStudent: ${$("student").value}`
+)) return;
 
   data.loans.push({
     id: "TX-" + Date.now().toString().slice(-8),
     bookId: book.id,
     student: $("student").value.trim(),
-    studentId,
     grade: $("grade").value,
     section: $("section").value.trim(),
     createdAt: today,
@@ -518,7 +508,7 @@ function renderActive() {
   const loans = data.loans.filter(l => {
     const book = getBook(l.bookId);
     return !l.returnedAt &&
-      [l.id, l.student, l.studentId, l.grade, l.section, book?.title]
+      [l.id, l.student, l.grade, l.section, book?.title]
         .some(v => String(v || "").toLowerCase().includes(query));
   });
 
@@ -542,7 +532,7 @@ function renderReturns() {
   const loans = data.loans.filter(l => {
     const book = getBook(l.bookId);
     return !l.returnedAt &&
-      [l.id, l.student, l.studentId, book?.title]
+      [l.id, l.student, book?.title]
         .some(v => String(v || "").toLowerCase().includes(query));
   });
 
@@ -550,7 +540,7 @@ function renderReturns() {
     ["Transaction", "Student", "Book", "Due Date", "Action"],
     loans.map(l => `<tr>
       <td>${escapeHTML(l.id)}</td>
-      <td>${escapeHTML(l.student)}<br>${escapeHTML(l.studentId)}</td>
+      <td>${escapeHTML(l.student)}</td>
       <td>${escapeHTML(getBook(l.bookId)?.title || "Unknown book")}</td>
       <td>${escapeHTML(l.dueDate)}</td>
       <td><button class="primary" data-action="return" data-id="${escapeHTML(l.id)}">Confirm Return</button></td>
@@ -592,7 +582,7 @@ function renderHistory() {
     .sort((a, b) => b.createdAt.localeCompare(a.createdAt))
     .filter(l => {
       const book = getBook(l.bookId);
-      return [l.id, l.student, l.studentId, l.grade, l.section, book?.title]
+      return [l.id, l.student, l.grade, l.section, book?.title]
         .some(v => String(v || "").toLowerCase().includes(query));
     });
 
@@ -600,7 +590,7 @@ function renderHistory() {
     ["Transaction", "Student", "Grade / Section", "Book", "Borrowed", "Returned", "Status"],
     loans.map(l => `<tr>
       <td>${escapeHTML(l.id)}</td>
-      <td>${escapeHTML(l.student)}<br>${escapeHTML(l.studentId)}</td>
+      <td>${escapeHTML(l.student)}</td>
       <td>${escapeHTML(l.grade)} - ${escapeHTML(l.section)}</td>
       <td>${escapeHTML(getBook(l.bookId)?.title || "Unknown book")}</td>
       <td>${escapeHTML(l.createdAt)}</td>
@@ -724,3 +714,284 @@ renderBooks();
 populateBooks();
 
 console.log("Library application loaded.");
+
+// ==========================================
+// QR TRANSACTION SCANNER (BORROW / RETURN)
+// ==========================================
+
+let transactionScanner = null;
+let scannedTransactionBook = null;
+let activeTransactionLoan = null;
+
+// Stop the new transaction scanner
+async function stopTransactionScanner() {
+  if (transactionScanner) {
+    try {
+      if (transactionScanner.isScanning) {
+        await transactionScanner.stop();
+      }
+
+      await transactionScanner.clear();
+    } catch (error) {
+      console.warn(error);
+    }
+
+    transactionScanner = null;
+  }
+
+  $("transactionScanner").classList.add("hidden");
+}
+
+// Find a book after scanning or entering its QR ID
+function loadTransactionBook() {
+  const qr = $("transactionQr").value.trim();
+
+  const book = getBook(qr);
+
+  if (!book) {
+    scannedTransactionBook = null;
+    activeTransactionLoan = null;
+
+    $("transactionResult").classList.add("hidden");
+
+    notify("QR code not found in the inventory.");
+    return;
+  }
+
+  scannedTransactionBook = book;
+
+  activeTransactionLoan = data.loans.find(
+    loan => loan.bookId === book.id && !loan.returnedAt
+  );
+
+  $("transactionResult").classList.remove("hidden");
+  $("transactionBookTitle").textContent = book.title;
+
+  $("transactionBorrowForm").classList.add("hidden");
+  $("transactionReturnDetails").classList.add("hidden");
+
+  if (activeTransactionLoan) {
+    // BOOK IS CURRENTLY BORROWED
+
+    $("transactionBookStatus").textContent =
+      "Status: Currently borrowed";
+
+    $("chooseBorrow").classList.add("hidden");
+    $("chooseReturn").classList.remove("hidden");
+
+    $("transactionOptions").classList.remove("hidden");
+
+    $("transactionBorrower").textContent =
+      "Borrowed by: " + activeTransactionLoan.student;
+  } else {
+    // BOOK IS AVAILABLE
+
+    $("transactionBookStatus").textContent =
+      available(book) > 0
+        ? "Status: Available"
+        : "Status: Unavailable";
+
+    $("chooseReturn").classList.add("hidden");
+
+    if (available(book) > 0) {
+      $("chooseBorrow").classList.remove("hidden");
+      $("transactionOptions").classList.remove("hidden");
+    } else {
+      $("chooseBorrow").classList.add("hidden");
+      $("transactionOptions").classList.add("hidden");
+
+      notify("This book is unavailable.");
+    }
+  }
+}
+
+// Allow manually entered QR / Book ID
+$("transactionQr").addEventListener("change", loadTransactionBook);
+
+// Start the transaction QR scanner
+$("scanTransactionBtn").addEventListener("click", async () => {
+  if (typeof Html5Qrcode === "undefined") {
+    notify("QR scanner library unavailable.");
+    return;
+  }
+
+  await stopTransactionScanner();
+
+  $("transactionScanner").classList.remove("hidden");
+  $("transactionScanner").innerHTML = "";
+
+  try {
+    transactionScanner = new Html5Qrcode("transactionScanner");
+
+    let handled = false;
+
+    await transactionScanner.start(
+      { facingMode: "environment" },
+      { fps: 10, qrbox: 220 },
+
+      async decodedText => {
+        if (handled) return;
+        handled = true;
+
+        $("transactionQr").value = decodedText.trim();
+
+        await stopTransactionScanner();
+
+        loadTransactionBook();
+      },
+
+      () => {}
+    );
+  } catch (error) {
+    await stopTransactionScanner();
+
+    notify("Camera access failed. Allow camera access and use HTTPS or Live Server.");
+
+    console.error(error);
+  }
+});
+
+// CHOOSE BORROW
+$("chooseBorrow").addEventListener("click", () => {
+  if (!scannedTransactionBook) return;
+
+  if (available(scannedTransactionBook) < 1) {
+    notify("This book is unavailable.");
+    loadTransactionBook();
+    return;
+  }
+
+  $("transactionOptions").classList.add("hidden");
+  $("transactionReturnDetails").classList.add("hidden");
+
+  $("transactionBorrowForm").classList.remove("hidden");
+
+  $("transactionStudent").value = "";
+  $("transactionGradeSection").value = "";
+});
+
+// CANCEL BORROW
+$("cancelTransaction").addEventListener("click", () => {
+  $("transactionBorrowForm").reset();
+
+  $("transactionBorrowForm").classList.add("hidden");
+
+  $("transactionOptions").classList.remove("hidden");
+});
+
+// CONFIRM BORROW
+$("transactionBorrowForm").addEventListener("submit", event => {
+  event.preventDefault();
+
+  const book = scannedTransactionBook;
+
+  if (!book || available(book) < 1) {
+    notify("This book is unavailable.");
+    loadTransactionBook();
+    return;
+  }
+
+  const student = $("transactionStudent").value.trim();
+  const gradeSection = $("transactionGradeSection").value.trim();
+
+  // Split combined Grade & Section
+  const match = gradeSection.match(/^(.+?)\s*[-–—]\s*(.+)$/);
+
+  if (!match) {
+    notify("Enter Grade and Section in this format: Grade 12 - STEM A");
+    return;
+  }
+
+  const grade = match[1].trim();
+  const section = match[2].trim();
+
+  const today = new Date().toISOString().slice(0, 10);
+  const dueDate = defaultDueDate();
+
+  if (!confirm(
+    `Confirm borrowing?\n\nBook: ${book.title}\nStudent: ${student}\nGrade & Section: ${gradeSection}`
+  )) {
+    return;
+  }
+
+  data.loans.push({
+    id: "TX-" + Date.now().toString().slice(-8),
+    bookId: book.id,
+    student: student,
+    grade: grade,
+    section: section,
+    createdAt: today,
+    dueDate: dueDate,
+    returnedAt: null
+  });
+
+  saveData();
+
+  renderDashboard();
+  renderActive();
+  renderReturns();
+  renderHistory();
+  populateBooks();
+
+  $("transactionBorrowForm").reset();
+  $("transactionBorrowForm").classList.add("hidden");
+
+  loadTransactionBook();
+
+  notify("Borrowing recorded successfully.");
+});
+
+// CHOOSE RETURN
+$("chooseReturn").addEventListener("click", () => {
+  if (!activeTransactionLoan) {
+    notify("No active borrowing record found.");
+    loadTransactionBook();
+    return;
+  }
+
+  $("transactionOptions").classList.add("hidden");
+  $("transactionBorrowForm").classList.add("hidden");
+
+  $("transactionReturnDetails").classList.remove("hidden");
+
+  $("transactionBorrower").textContent =
+    "Borrowed by: " + activeTransactionLoan.student;
+});
+
+// CANCEL RETURN
+$("cancelTransactionReturn").addEventListener("click", () => {
+  $("transactionReturnDetails").classList.add("hidden");
+  $("transactionOptions").classList.remove("hidden");
+});
+
+// CONFIRM RETURN
+$("confirmTransactionReturn").addEventListener("click", () => {
+  if (!activeTransactionLoan) {
+    notify("No active borrowing record found.");
+    loadTransactionBook();
+    return;
+  }
+
+  if (!confirm(
+    `Confirm return?\n\nBook: ${scannedTransactionBook.title}\nStudent: ${activeTransactionLoan.student}`
+  )) {
+    return;
+  }
+
+  activeTransactionLoan.returnedAt =
+    new Date().toISOString().slice(0, 10);
+
+  saveData();
+
+  renderDashboard();
+  renderActive();
+  renderReturns();
+  renderHistory();
+  populateBooks();
+
+  $("transactionReturnDetails").classList.add("hidden");
+
+  loadTransactionBook();
+
+  notify("Book returned successfully.");
+});
