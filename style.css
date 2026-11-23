@@ -162,3 +162,76 @@ tbody tr:hover { background: #fafbff; }
   .full-width { grid-column: auto; }
   .panel-head { align-items: flex-start; }
 }
+/* QR Transaction Popup */
+#transactionResult:not(.hidden) {
+  position: fixed;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  z-index: 9999;
+
+  width: 90%;
+  max-width: 420px;
+  max-height: 85vh;
+  overflow-y: auto;
+
+  background: white;
+  color: #222;
+  padding: 24px;
+  border-radius: 16px;
+  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.3);
+}
+
+/* Darken the background behind the popup */
+#transactionResult:not(.hidden)::before {
+  content: "";
+  position: fixed;
+  inset: -100vh -100vw;
+  background: rgba(0, 0, 0, 0.6);
+  z-index: -1;
+}
+
+/* Make the popup fit smaller phone screens */
+@media (max-width: 480px) {
+  #transactionResult:not(.hidden) {
+    width: 90%;
+    padding: 20px;
+    border-radius: 14px;
+  }
+}/* QR Transaction Popup */
+#transactionResult:not(.hidden) {
+  position: fixed;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  z-index: 9999;
+
+  width: 90%;
+  max-width: 420px;
+  max-height: 85vh;
+  overflow-y: auto;
+
+  background: white;
+  color: #222;
+  padding: 24px;
+  border-radius: 16px;
+  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.3);
+}
+
+/* Darken the background behind the popup */
+#transactionResult:not(.hidden)::before {
+  content: "";
+  position: fixed;
+  inset: -100vh -100vw;
+  background: rgba(0, 0, 0, 0.6);
+  z-index: -1;
+}
+
+/* Make the popup fit smaller phone screens */
+@media (max-width: 480px) {
+  #transactionResult:not(.hidden) {
+    width: 90%;
+    padding: 20px;
+    border-radius: 14px;
+  }
+}
