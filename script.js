@@ -387,8 +387,14 @@ $("booksTable").addEventListener("click", event => {
       return;
     }
 
+    const bookUrl = new URL(
+      "https://aeon-herschel.github.io/qr-library-monitoring-systems/"
+    );
+
+    bookUrl.searchParams.set("book", book.id);
+
     new QRCode($("qrCode"), {
-      text: book.id,
+      text: bookUrl.toString(),
       width: 190,
       height: 190
     });
@@ -412,6 +418,7 @@ $("printQR").addEventListener("click", () => {
       <script>window.onload=()=>window.print();<\/script>
     </body></html>
   `);
+
   win.document.close();
 });
 
