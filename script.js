@@ -121,6 +121,21 @@ function startSharedDatabase() {
       renderActive();
       renderReturns();
       renderHistory();
+      
+      // Automatically load a book opened from a phone camera QR scan
+const scannedBookId = new URLSearchParams(window.location.search).get("book");
+
+if (scannedBookId) {
+  $("transactionQr").value = scannedBookId;
+  loadTransactionBook();
+
+  // Remove the QR parameter after processing to prevent reloading it
+  history.replaceState(
+    null,
+    "",
+    window.location.pathname + window.location.hash
+  );
+}
     },
     error => {
       databaseReady = false;
@@ -180,6 +195,7 @@ function showPage(page) {
     dashboard: "Dashboard",
     books: "Books",
     borrow: "Borrow Item",
+    scanTransaction: "Scan QR",
     active: "Active Borrowings",
     returns: "Return Book",
     history: "Borrowing History"
@@ -194,6 +210,7 @@ function showPage(page) {
   if (page === "returns") renderReturns();
   if (page === "history") renderHistory();
 }
+
 // LOGIN WITH FIREBASE AUTHENTICATION
 $("loginForm").addEventListener("submit", async event => {
   event.preventDefault();
@@ -229,7 +246,9 @@ onAuthStateChanged(auth, user => {
     $("app").classList.remove("hidden");
     $("password").value = "";
     startSharedDatabase();
-    showPage("dashboard");
+    const hasScannedBook = new URLSearchParams(window.location.search).has("book");
+
+showPage(hasScannedBook ? "scanTransaction" : "dashboard");
   } else {
     databaseReady = false;
     if (stopDatabaseListener) {
